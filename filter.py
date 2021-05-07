@@ -3,18 +3,19 @@ import pandas
 import json
 import os
 
-########
+##################
 UPDATE_JSON = True
-########
+REQUIRE_WAGE = True
+##################
 
 if (not os.path.exists("jobdata/jobdata.json")) or (os.path.exists("jobdata/jobdata.json") and UPDATE_JSON):
     print("SENDING REQUESTS TO API...\n")
 
-    PASSKEY = os.environ.get("PASSKEY") #stored in local environment (.zprofile)
+    PASSKEY = os.environ.get("PASSKEY") # stored in local environment (.zprofile)
     base_url = "https://tnrp-api.gartner.com/wantedapi/v5.0/jobs?passkey="+PASSKEY+"&city=st_cloud@mn&responsetype=json&pagesize=100&descriptiontype=long&educationlevel=8"
     response = requests.get(base_url)
     numfound = json.loads(response.text)['response']['numfound']
-    last_page =  -(-int(numfound) // 100) #ceiling division of numfound by 100
+    last_page =  -(-int(numfound) // 100) # ceiling division of numfound by 100
 
     jobs = []
     for page in list(range(1,last_page+1)):
@@ -70,13 +71,26 @@ count = 0
 tot = len(jobs)
 for job in jobs:
 
-    #shorten title
+    # convert salaries (both posted and modeled) to wages
+    if (job["salaries"]["salary"][0]["type"] == "Posted") and (6 < round(int(job["salaries"]["salary"][0]["value"]) / 2080) < 40):
+        C['Wage'].append("$" + str(round(int(job["salaries"]["salary"][0]["value"]) / 2080)))
+        count += 1
+    elif (job["salaries"]["salary"][0]["type"] == "Modeled") and (6 < round(int(job["salaries"]["salary"][0]["value"]) / 2080) < 40):
+        C['Wage'].append("~$" + str(round(int(job["salaries"]["salary"][0]["value"]) / 2080)))
+        count += 1
+    else:
+        if REQUIRE_WAGE:
+            continue # do not add job to C
+        else:
+            C['Wage'].append("$?")
+
+    # shorten title
     if len(job["title"]["value"]) > 24:
         C['Title'].append(job["title"]["value"][:24] + "...")
     else:
         C['Title'].append(job["title"]["value"])
 
-    #shorten description
+    # shorten description
     if len(job['description']['value']) > 297:
         C['Description'].append(job['description']['value'][:297] + "...")
     else:
@@ -87,19 +101,9 @@ for job in jobs:
     else:
         C['Company'].append(job["employer"]["name"])
 
-    #convert salaries (both posted and modeled) to wages
-    if (job["salaries"]["salary"][0]["type"] == "Posted") and (6 < round(int(job["salaries"]["salary"][0]["value"]) / 2080) < 40):
-        C['Wage'].append("$" + str(round(int(job["salaries"]["salary"][0]["value"]) / 2080)))
-        count += 1
-    elif (job["salaries"]["salary"][0]["type"] == "Modeled") and (6 < round(int(job["salaries"]["salary"][0]["value"]) / 2080) < 40):
-        C['Wage'].append("~$" + str(round(int(job["salaries"]["salary"][0]["value"]) / 2080)))
-        count += 1
-    else:
-        C['Wage'].append("$?")
-
     C['Link'].append(job["sources"]["source"][0]["url"])
 
-    #assign tags to match with interests
+    # assign tags to match with interests
     tokenized_desc = set(job['description']['value'].split())
     for tag in tags:
         if len(tag_dict[tag].intersection(tokenized_desc)) + len(tag_dict_plural[tag].intersection(tokenized_desc)) > 0:
