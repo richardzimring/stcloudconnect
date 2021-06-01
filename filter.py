@@ -67,17 +67,16 @@ for i in columns:
     C[i] = []
 
 print("EXTRACTING DATA...\n")
-count = 0
 tot = len(jobs)
 for job in jobs:
 
     # convert salaries (both posted and modeled) to wages
     if (job["salaries"]["salary"][0]["type"] == "Posted") and (6 < round(int(job["salaries"]["salary"][0]["value"]) / 2080) < 40):
         C['Wage'].append("$" + str(round(int(job["salaries"]["salary"][0]["value"]) / 2080)))
-        count += 1
+
     elif (job["salaries"]["salary"][0]["type"] == "Modeled") and (6 < round(int(job["salaries"]["salary"][0]["value"]) / 2080) < 40):
         C['Wage'].append("~$" + str(round(int(job["salaries"]["salary"][0]["value"]) / 2080)))
-        count += 1
+
     else:
         if REQUIRE_WAGE:
             continue # do not add job to C
